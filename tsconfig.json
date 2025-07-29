@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "es2020",                                  /* Versión más moderna de ECMAScript */
+    "module": "commonjs",                                
+    "lib": ["es2020"],                                  /* Bibliotecas específicas a incluir */
+    "outDir": "./dist",                                 
+    "rootDir": "./src",                                 
+    "baseUrl": "./src",                                 
+    "paths": {
+      "@/*": ["*"]                                      
+    },
+    "sourceMap": true,                                  
+    "declaration": true,                                /* Genera archivos .d.ts */
+    "declarationMap": true,                             /* Genera sourcemaps para archivos .d.ts */
+    "removeComments": true,                             
+    "esModuleInterop": true,                            
+    "forceConsistentCasingInFileNames": true,           
+    "strict": true,                                     
+    "noImplicitAny": true,                             
+    "strictNullChecks": true,                          
+    "strictFunctionTypes": true,                        
+    "strictBindCallApply": true,                        /* Habilita chequeos más estrictos para bind, call y apply */
+    "strictPropertyInitialization": true,               /* Asegura inicialización de propiedades en clases */
+    "noUnusedLocals": true,                            
+    "noUnusedParameters": true,                         
+    "noImplicitReturns": true,                         
+    "noFallthroughCasesInSwitch": true,                /* Previene fallthrough en switch statements */
+    "moduleResolution": "node",                         /* Especifica estrategia de resolución de módulos */
+    "allowSyntheticDefaultImports": true,              /* Permite imports por defecto de módulos sin export default */
+    "skipLibCheck": true,                               
+    "resolveJsonModule": true,                          
+    "experimentalDecorators": true,                     
+    "emitDecoratorMetadata": true,
+    "incremental": true,                               /* Habilita compilación incremental */
+    "isolatedModules": true                            /* Asegura que cada archivo puede ser transpilado independientemente */
+  },
+  "include": [
+    "src/**/*"                                         
+  ],
+  "exclude": [
+    "node_modules",                                    
+    "dist",
+    "**/*.spec.ts",                                    /* Excluye archivos de test */
+    "**/*.test.ts"                                     /* Excluye archivos de test */
+  ]
+}
