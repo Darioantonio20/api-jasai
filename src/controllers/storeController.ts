@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Store } from '../models/Store';
+import { Product } from '../models/Product';
 
 // @desc    Get all stores
 // @route   GET /api/stores
@@ -136,7 +137,7 @@ export const updateStore = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// @desc    Delete store
+// @desc    Delete store and all its products
 // @route   DELETE /api/stores/:id
 // @access  Private (admin only)
 export const deleteStore = async (req: Request, res: Response): Promise<void> => {
@@ -151,6 +152,10 @@ export const deleteStore = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Delete all products associated with the store
+    await Product.deleteMany({ storeId: store._id });
+
+    // Delete the store
     await store.deleteOne();
 
     res.status(200).json({

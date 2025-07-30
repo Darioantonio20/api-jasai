@@ -226,4 +226,55 @@ export const toggleProductStatus = async (req: Request, res: Response): Promise<
       error: error.message
     });
   }
-}; 
+};
+
+// @desc    Delete product
+// @route   DELETE /api/stores/:storeId/products/:id
+// @access  Private (store owner/admin)
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      storeId: req.params.storeId
+    });
+
+    if (!product) {
+      res.status(404).json({
+        success: false,
+        error: 'Producto no encontrado'
+      });
+      return;
+    }
+
+    const store = await Store.findById(req.params.storeId);
+
+    if (!store) {
+      res.status(404).json({
+        success: false,
+        error: 'Tienda no encontrada'
+      });
+      return;
+    }
+
+    // Check if user is store owner or admin
+    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+      res.status(401).json({
+        success: false,
+        error: 'No autorizado para eliminar productos en esta tienda'
+      });
+      return;
+    }
+
+    await product.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      data: {}
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};

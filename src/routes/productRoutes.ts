@@ -4,7 +4,8 @@ import {
   getProduct,
   createProduct,
   updateProduct,
-  toggleProductStatus
+  toggleProductStatus,
+  deleteProduct
 } from '../controllers/productController';
 import { protect, authorize } from '../middlewares/auth';
 
@@ -22,7 +23,8 @@ router.route('/')
   .post(createProduct);
 
 router.route('/:id')
-  .put(updateProduct);
+  .put(updateProduct)
+  .delete(deleteProduct);
 
 router.put('/:id/toggle-status', toggleProductStatus);
 
