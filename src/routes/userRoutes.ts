@@ -6,8 +6,15 @@ import {
   updateUser,
   deleteUser
 } from '../controllers/userController';
+import { protect, authorize } from '../middlewares/auth';
 
 const router = express.Router();
+
+// Protect all routes after this middleware
+router.use(protect);
+
+// Admin only routes
+router.use(authorize('admin'));
 
 router.route('/')
   .get(getUsers)
