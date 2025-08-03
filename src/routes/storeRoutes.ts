@@ -2,7 +2,7 @@ import express from 'express';
 import {
   getStores,
   getStore,
-  createStore,
+  getStoreByOwner,
   updateStore,
   deleteStore
 } from '../controllers/storeController';
@@ -18,16 +18,16 @@ router.use('/:storeId/products', productRouter);
 
 // Public routes
 router.get('/', getStores);
-router.get('/:id', getStore);
 
 // Protected routes
 router.use(protect);
 
-// Admin/store_owner routes
-router.post('/', authorize('admin', 'store_owner'), createStore);
-router.put('/:id', authorize('admin', 'store_owner'), updateStore);
+// Get store by owner ID (debe ir antes de getStore por el patrón de la URL)
+router.get('/owner/:ownerId', authorize('admin', 'store_owner'), getStoreByOwner);
 
-// Admin only routes
+// Rutas con :id deben ir después de rutas específicas para evitar conflictos
+router.get('/:id', getStore);
+router.put('/:id', authorize('admin', 'store_owner'), updateStore);
 router.delete('/:id', authorize('admin'), deleteStore);
 
-export default router; 
+export default router;

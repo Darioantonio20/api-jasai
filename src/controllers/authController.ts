@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { User } from '../models/User';
+import { Store } from '../models/Store';
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -12,7 +13,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password, 
       phone,
       location,
-      role = 'client'
+      role = 'client',
+      store // Solo para role = 'admin'
     } = req.body;
 
     // Validate required fields
@@ -25,12 +27,70 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Validate location fields
-    if (!location.address || !location.city || !location.state || !location.zipCode) {
+    if (!location.alias || !location.googleMapsUrl) {
       res.status(400).json({
         success: false,
-        error: 'Por favor completa todos los campos de ubicación'
+        error: 'Por favor proporciona el alias y el enlace de Google Maps para la ubicación'
       });
       return;
+    }
+
+    // Validate Google Maps URL format
+    if (!location.googleMapsUrl.startsWith('https://maps.app.goo.gl/') && 
+        !location.googleMapsUrl.startsWith('https://goo.gl/maps/')) {
+      res.status(400).json({
+        success: false,
+        error: 'El enlace de Google Maps proporcionado no es válido'
+      });
+      return;
+    }
+
+    // Validate phone format
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phone)) {
+      res.status(400).json({
+        success: false,
+        error: 'El número telefónico debe estar en formato internacional (Ej: +529614795475)'
+      });
+      return;
+    }
+
+    // Additional validations for admin role
+    if (role === 'admin') {
+      if (!store) {
+        res.status(400).json({
+          success: false,
+          error: 'La información de la tienda es requerida para cuentas de administrador'
+        });
+        return;
+      }
+
+      // Validate store schedule
+      if (!store.schedule || !Array.isArray(store.schedule) || store.schedule.length !== 7) {
+        res.status(400).json({
+          success: false,
+          error: 'Debe proporcionar el horario para todos los días de la semana'
+        });
+        return;
+      }
+
+      // Validate store categories
+      if (!store.categories || !Array.isArray(store.categories) || store.categories.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Debe seleccionar al menos una categoría para la tienda'
+        });
+        return;
+      }
+
+      // Validate store phone format
+      if (!phoneRegex.test(store.phone)) {
+        res.status(400).json({
+          success: false,
+          error: 'El número telefónico de la tienda debe estar en formato internacional (Ej: +529614795475)'
+        });
+        return;
+      }
     }
 
     // Create user
@@ -42,6 +102,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       location,
       role
     });
+
+    // If admin role, create store
+    if (role === 'admin' && store) {
+      store.ownerId = user._id;
+      await Store.create(store);
+    }
 
     sendTokenResponse(user, 201, res);
   } catch (error: any) {
@@ -105,10 +171,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?.id);
+    let userData: any = user?.toObject();
+
+    // If user is admin, get their store information
+    if (user?.role === 'admin') {
+      const store = await Store.findOne({ ownerId: user._id });
+      userData = { ...userData, store };
+    }
 
     res.status(200).json({
       success: true,
-      data: user
+      data: userData
     });
   } catch (error: any) {
     res.status(500).json({

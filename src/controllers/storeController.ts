@@ -7,12 +7,12 @@ import { Product } from '../models/Product';
 // @access  Public
 export const getStores = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, search, page = 1, limit = 10 } = req.query;
+    const { categories, search, page = 1, limit = 10 } = req.query;
     const query: any = {};
 
-    // Add category filter
-    if (category) {
-      query.category = category;
+    // Add categories filter (ahora es un array)
+    if (categories) {
+      query.categories = { $in: Array.isArray(categories) ? categories : [categories] };
     }
 
     // Add search filter
@@ -26,18 +26,20 @@ export const getStores = async (req: Request, res: Response): Promise<void> => {
     const stores = await Store.find(query)
       .skip(skip)
       .limit(Number(limit))
-      .populate('ownerId', 'name email');
+      .populate('ownerId', 'name email')
+      .lean();
 
     const total = await Store.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: stores,
+      count: stores.length,
       pagination: {
         page: Number(page),
         limit: Number(limit),
         total
-      }
+      },
+      data: stores
     });
   } catch (error: any) {
     res.status(500).json({
@@ -52,12 +54,14 @@ export const getStores = async (req: Request, res: Response): Promise<void> => {
 // @access  Public
 export const getStore = async (req: Request, res: Response): Promise<void> => {
   try {
-    const store = await Store.findById(req.params.id).populate('ownerId', 'name email');
+    const store = await Store.findById(req.params.id)
+      .populate('ownerId', 'name email')
+      .lean();
 
     if (!store) {
       res.status(404).json({
         success: false,
-        error: 'Store not found'
+        error: 'Tienda no encontrada'
       });
       return;
     }
@@ -74,22 +78,38 @@ export const getStore = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Create store
-// @route   POST /api/stores
+// @desc    Get store by owner ID
+// @route   GET /api/stores/owner/:ownerId
 // @access  Private (admin/store_owner)
-export const createStore = async (req: Request, res: Response): Promise<void> => {
+export const getStoreByOwner = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Add user to req.body
-    req.body.ownerId = req.user?.id;
+    const store = await Store.findOne({ ownerId: req.params.ownerId })
+      .populate('ownerId', 'name email')
+      .lean();
 
-    const store = await Store.create(req.body);
+    if (!store) {
+      res.status(404).json({
+        success: false,
+        error: 'Tienda no encontrada'
+      });
+      return;
+    }
 
-    res.status(201).json({
+    // Verificar que el usuario sea el dueño o un admin
+    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+      res.status(401).json({
+        success: false,
+        error: 'No autorizado para ver esta tienda'
+      });
+      return;
+    }
+
+    res.status(200).json({
       success: true,
       data: store
     });
   } catch (error: any) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: error.message
     });
@@ -106,7 +126,7 @@ export const updateStore = async (req: Request, res: Response): Promise<void> =>
     if (!store) {
       res.status(404).json({
         success: false,
-        error: 'Store not found'
+        error: 'Tienda no encontrada'
       });
       return;
     }
@@ -115,15 +135,88 @@ export const updateStore = async (req: Request, res: Response): Promise<void> =>
     if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
       res.status(401).json({
         success: false,
-        error: 'Not authorized to update this store'
+        error: 'No autorizado para actualizar esta tienda'
       });
       return;
     }
 
-    store = await Store.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
+    // Validate schedule if it's being updated
+    if (req.body.schedule) {
+      if (!Array.isArray(req.body.schedule) || req.body.schedule.length !== 7) {
+        res.status(400).json({
+          success: false,
+          error: 'Debe proporcionar el horario para todos los días de la semana'
+        });
+        return;
+      }
+
+      // Validar formato de horarios
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      const isValidSchedule = req.body.schedule.every((day: any) => {
+        return timeRegex.test(day.openTime) && timeRegex.test(day.closeTime);
+      });
+
+      if (!isValidSchedule) {
+        res.status(400).json({
+          success: false,
+          error: 'Los horarios deben estar en formato HH:mm'
+        });
+        return;
+      }
+    }
+
+    // Validate categories if they're being updated
+    if (req.body.categories) {
+      if (!Array.isArray(req.body.categories) || req.body.categories.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Debe seleccionar al menos una categoría'
+        });
+        return;
+      }
+    }
+
+    // Validate phone if it's being updated
+    if (req.body.phone) {
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(req.body.phone)) {
+        res.status(400).json({
+          success: false,
+          error: 'El número telefónico debe estar en formato internacional (Ej: +529614795475)'
+        });
+        return;
+      }
+    }
+
+    // Validate location if it's being updated
+    if (req.body.location) {
+      if (!req.body.location.alias || !req.body.location.googleMapsUrl) {
+        res.status(400).json({
+          success: false,
+          error: 'La ubicación debe incluir alias y URL de Google Maps'
+        });
+        return;
+      }
+
+      if (!req.body.location.googleMapsUrl.startsWith('https://maps.app.goo.gl/') && 
+          !req.body.location.googleMapsUrl.startsWith('https://goo.gl/maps/')) {
+        res.status(400).json({
+          success: false,
+          error: 'El enlace de Google Maps proporcionado no es válido'
+        });
+        return;
+      }
+    }
+
+    // Update store with new data
+    store = await Store.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      {
+        new: true,
+        runValidators: true
+      }
+    ).populate('ownerId', 'name email');
 
     res.status(200).json({
       success: true,
@@ -147,7 +240,7 @@ export const deleteStore = async (req: Request, res: Response): Promise<void> =>
     if (!store) {
       res.status(404).json({
         success: false,
-        error: 'Store not found'
+        error: 'Tienda no encontrada'
       });
       return;
     }
@@ -168,4 +261,4 @@ export const deleteStore = async (req: Request, res: Response): Promise<void> =>
       error: error.message
     });
   }
-}; 
+};

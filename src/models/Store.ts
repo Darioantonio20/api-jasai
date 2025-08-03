@@ -1,6 +1,8 @@
 import mongoose, { Schema } from 'mongoose';
 import { IStore } from '../interfaces/store.interface';
 
+const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;  // Validación formato 24h "HH:mm"
+
 const storeSchema = new Schema({
   name: {
     type: String,
@@ -16,13 +18,39 @@ const storeSchema = new Schema({
   phone: {
     type: String,
     required: [true, 'Número telefónico es requerido'],
-    trim: true
+    trim: true,
+    match: [
+      /^\+[1-9]\d{1,14}$/,
+      'Por favor ingresa un número telefónico válido en formato internacional (Ej: +529614795475)'
+    ],
+    validate: {
+      validator: function(v: string) {
+        const digits = v.slice(1);
+        return digits.length >= 10 && digits.length <= 15;
+      },
+      message: 'El número telefónico debe tener entre 10 y 15 dígitos'
+    }
   },
-  category: {
+  categories: [{
     type: String,
-    required: [true, 'Categoría es requerida'],
-    enum: ['Restaurante', 'Ropa', 'Tecnología', 'Hogar', 'Otros']
-  },
+    required: [true, 'Al menos una categoría es requerida'],
+    enum: [
+      'tecnologia',
+      'moda',
+      'juguetes',
+      'comida',
+      'hogar',
+      'jardin',
+      'mascotas',
+      'deportes',
+      'belleza',
+      'libros',
+      'musica',
+      'arte',
+      'automotriz',
+      'ferreteria'
+    ]
+  }],
   description: {
     type: String,
     required: [true, 'Descripción es requerida'],
@@ -33,12 +61,67 @@ const storeSchema = new Schema({
     required: true
   }],
   location: {
-    type: String,
-    required: [true, 'Ubicación es requerida']
+    alias: {
+      type: String,
+      required: [true, 'El alias de ubicación es requerido'],
+      trim: true,
+      maxlength: [200, 'El alias de ubicación no puede tener más de 200 caracteres']
+    },
+    googleMapsUrl: {
+      type: String,
+      required: [true, 'El vínculo de Google Maps es requerido'],
+      trim: true,
+      validate: {
+        validator: function(v: string) {
+          return v.startsWith('https://maps.app.goo.gl/') || v.startsWith('https://goo.gl/maps/');
+        },
+        message: 'El vínculo debe ser una URL válida de Google Maps'
+      }
+    }
   },
-  address: {
-    type: String,
-    required: [true, 'Dirección es requerida']
+  schedule: {
+    type: [{
+      day: {
+        type: String,
+        required: [true, 'El día es requerido'],
+        enum: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+      },
+      openTime: {
+        type: String,
+        required: [true, 'La hora de apertura es requerida'],
+        validate: {
+          validator: function(v: string) {
+            return timeRegex.test(v);
+          },
+          message: 'El formato de hora debe ser HH:mm en formato 24 horas'
+        }
+      },
+      closeTime: {
+        type: String,
+        required: [true, 'La hora de cierre es requerida'],
+        validate: {
+          validator: function(v: string) {
+            return timeRegex.test(v);
+          },
+          message: 'El formato de hora debe ser HH:mm en formato 24 horas'
+        }
+      },
+      isOpen: {
+        type: Boolean,
+        required: [true, 'Debe especificar si la tienda abre este día'],
+        default: true
+      }
+    }],
+    required: [true, 'El horario de la tienda es requerido'],
+    validate: {
+      validator: function(schedule: any[]) {
+        // Verificar que estén todos los días de la semana
+        const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const scheduleDays = schedule.map(s => s.day);
+        return days.every(day => scheduleDays.includes(day));
+      },
+      message: 'Debe proporcionar el horario para todos los días de la semana'
+    }
   },
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -55,6 +138,6 @@ const storeSchema = new Schema({
 });
 
 // Add index for search
-storeSchema.index({ name: 'text', description: 'text', category: 'text' });
+storeSchema.index({ name: 'text', description: 'text', categories: 'text' });
 
-export const Store = mongoose.model<IStore>('Store', storeSchema); 
+export const Store = mongoose.model<IStore>('Store', storeSchema);

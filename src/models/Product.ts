@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { IProduct } from '../interfaces/product.interface';
+import { Store } from './Store';
 
 const productSchema = new Schema({
   name: {
@@ -25,16 +26,47 @@ const productSchema = new Schema({
   },
   category: {
     type: String,
-    required: [true, 'Categoría es requerida']
+    required: [true, 'Categoría es requerida'],
+    enum: [
+      'tecnologia',
+      'moda',
+      'juguetes',
+      'comida',
+      'hogar',
+      'jardin',
+      'mascotas',
+      'deportes',
+      'belleza',
+      'libros',
+      'musica',
+      'arte',
+      'automotriz',
+      'ferreteria'
+    ],
+    validate: {
+      validator: async function(this: any, category: string) {
+        // Verificar que la categoría esté entre las categorías de la tienda
+        const store = await Store.findById(this.storeId);
+        return store?.categories.includes(category);
+      },
+      message: 'La categoría del producto debe ser una de las categorías de la tienda'
+    }
   },
-  image: {
+  images: [{
     type: String,
-    required: [true, 'Imagen es requerida']
-  },
+    required: [true, 'Al menos una imagen es requerida']
+  }],
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store',
-    required: true
+    required: true,
+    validate: {
+      validator: async function(storeId: string) {
+        const store = await Store.findById(storeId);
+        return store !== null;
+      },
+      message: 'La tienda especificada no existe'
+    }
   },
   status: {
     type: String,
@@ -48,4 +80,4 @@ const productSchema = new Schema({
 // Add index for search
 productSchema.index({ name: 'text', description: 'text', category: 'text' });
 
-export const Product = mongoose.model<IProduct>('Product', productSchema); 
+export const Product = mongoose.model<IProduct>('Product', productSchema);

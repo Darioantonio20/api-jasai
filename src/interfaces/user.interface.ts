@@ -1,10 +1,8 @@
 import { Document } from 'mongoose';
 
 interface ILocation {
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
+  alias: string;      // Descripción textual de la ubicación
+  googleMapsUrl: string;  // Vínculo de Google Maps
 }
 
 export interface IUser extends Document {

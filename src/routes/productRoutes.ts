@@ -8,8 +8,12 @@ import {
   deleteProduct
 } from '../controllers/productController';
 import { protect, authorize } from '../middlewares/auth';
+import { setStore } from '../middlewares/store';
 
 const router = express.Router({ mergeParams: true });
+
+// Aplicar el middleware setStore a todas las rutas
+router.use(setStore);
 
 // Public routes
 router.get('/', getProducts);
@@ -17,15 +21,11 @@ router.get('/:id', getProduct);
 
 // Protected routes
 router.use(protect);
-router.use(authorize('admin', 'store_owner'));
 
-router.route('/')
-  .post(createProduct);
+// Store owner/admin routes
+router.post('/', authorize('admin', 'store_owner'), createProduct);
+router.put('/:id', authorize('admin', 'store_owner'), updateProduct);
+router.put('/:id/toggle-status', authorize('admin', 'store_owner'), toggleProductStatus);
+router.delete('/:id', authorize('admin', 'store_owner'), deleteProduct);
 
-router.route('/:id')
-  .put(updateProduct)
-  .delete(deleteProduct);
-
-router.put('/:id/toggle-status', toggleProductStatus);
-
-export default router; 
+export default router;

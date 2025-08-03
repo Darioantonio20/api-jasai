@@ -5,10 +5,10 @@ export interface IProduct extends Document {
   description: string;
   price: number;
   stock: number;
-  image: string;
-  category: string;
+  images: string[];  // Cambiado a array para múltiples imágenes
+  category: string;  // Debe coincidir con una categoría de la tienda
   storeId: string;
   status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
-} 
+}

@@ -31,30 +31,35 @@ const userSchema = new Schema({
     type: String,
     required: [true, 'El número telefónico es requerido'],
     match: [
-      /^\+?1?\s*\(?[0-9]{3}\)?\s*[0-9]{3}\s*-?\s*[0-9]{4}$/,
-      'Por favor ingresa un número telefónico válido (Ej: +1 (555) 123-4567)'
-    ]
+      /^\+[1-9]\d{1,14}$/,
+      'Por favor ingresa un número telefónico válido en formato internacional (Ej: +529614795475)'
+    ],
+    validate: {
+      validator: function(v: string) {
+        // Asegurarse de que el número tenga entre 10 y 15 dígitos (sin contar el +)
+        const digits = v.slice(1);
+        return digits.length >= 10 && digits.length <= 15;
+      },
+      message: 'El número telefónico debe tener entre 10 y 15 dígitos'
+    }
   },
   location: {
-    address: {
+    alias: {
       type: String,
-      required: [true, 'La dirección es requerida'],
-      trim: true
+      required: [true, 'El alias de ubicación es requerido'],
+      trim: true,
+      maxlength: [200, 'El alias de ubicación no puede tener más de 200 caracteres']
     },
-    city: {
+    googleMapsUrl: {
       type: String,
-      required: [true, 'La ciudad es requerida'],
-      trim: true
-    },
-    state: {
-      type: String,
-      required: [true, 'El estado es requerido'],
-      trim: true
-    },
-    zipCode: {
-      type: String,
-      required: [true, 'El código postal es requerido'],
-      match: [/^[0-9]{5}$/, 'El código postal debe tener 5 dígitos']
+      required: [true, 'El vínculo de Google Maps es requerido'],
+      trim: true,
+      validate: {
+        validator: function(v: string) {
+          return v.startsWith('https://maps.app.goo.gl/') || v.startsWith('https://goo.gl/maps/');
+        },
+        message: 'El vínculo debe ser una URL válida de Google Maps'
+      }
     }
   },
   role: {

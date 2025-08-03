@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { Product } from '../models/Product';
-import { Store } from '../models/Store';
 
-// @desc    Get all products by store
+// @desc    Get all products
 // @route   GET /api/stores/:storeId/products
 // @access  Public
 export const getProducts = async (req: Request, res: Response): Promise<void> => {
@@ -20,23 +19,34 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       query.$text = { $search: search };
     }
 
+    // Add status filter (por defecto solo productos activos)
+    const isOwnerOrAdmin = req.user && 
+      (req.user.role === 'admin' || req.user.id === req.store.ownerId.toString());
+    
+    if (!isOwnerOrAdmin) {
+      query.status = 'active';
+    }
+
     // Pagination
     const skip = (Number(page) - 1) * Number(limit);
 
     const products = await Product.find(query)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate('storeId', 'name')
+      .lean();
 
     const total = await Product.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: products,
+      count: products.length,
       pagination: {
         page: Number(page),
         limit: Number(limit),
         total
-      }
+      },
+      data: products
     });
   } catch (error: any) {
     res.status(500).json({
@@ -54,9 +64,21 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
     const product = await Product.findOne({
       _id: req.params.id,
       storeId: req.params.storeId
-    });
+    }).populate('storeId', 'name');
 
     if (!product) {
+      res.status(404).json({
+        success: false,
+        error: 'Producto no encontrado'
+      });
+      return;
+    }
+
+    // Si el producto está inactivo, solo el dueño o admin pueden verlo
+    const isOwnerOrAdmin = req.user && 
+      (req.user.role === 'admin' || req.user.id === req.store.ownerId.toString());
+
+    if (product.status === 'inactive' && !isOwnerOrAdmin) {
       res.status(404).json({
         success: false,
         error: 'Producto no encontrado'
@@ -81,27 +103,16 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
 // @access  Private (store owner/admin)
 export const createProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const store = await Store.findById(req.params.storeId);
-
-    if (!store) {
-      res.status(404).json({
-        success: false,
-        error: 'Tienda no encontrada'
-      });
-      return;
-    }
-
-    // Check if user is store owner or admin
-    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
-      res.status(401).json({
-        success: false,
-        error: 'No autorizado para crear productos en esta tienda'
-      });
-      return;
-    }
-
-    // Add store id to body
     req.body.storeId = req.params.storeId;
+
+    // Verificar que la categoría está entre las categorías de la tienda
+    if (!req.store.categories.includes(req.body.category)) {
+      res.status(400).json({
+        success: false,
+        error: 'La categoría del producto debe ser una de las categorías de la tienda'
+      });
+      return;
+    }
 
     const product = await Product.create(req.body);
 
@@ -135,27 +146,20 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const store = await Store.findById(req.params.storeId);
-
-    if (!store) {
-      res.status(404).json({
+    // Si se está actualizando la categoría, verificar que sea válida
+    if (req.body.category && !req.store.categories.includes(req.body.category)) {
+      res.status(400).json({
         success: false,
-        error: 'Tienda no encontrada'
-      });
-      return;
-    }
-
-    // Check if user is store owner or admin
-    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
-      res.status(401).json({
-        success: false,
-        error: 'No autorizado para actualizar productos en esta tienda'
+        error: 'La categoría del producto debe ser una de las categorías de la tienda'
       });
       return;
     }
 
     product = await Product.findOneAndUpdate(
-      { _id: req.params.id, storeId: req.params.storeId },
+      {
+        _id: req.params.id,
+        storeId: req.params.storeId
+      },
       req.body,
       {
         new: true,
@@ -189,25 +193,6 @@ export const toggleProductStatus = async (req: Request, res: Response): Promise<
       res.status(404).json({
         success: false,
         error: 'Producto no encontrado'
-      });
-      return;
-    }
-
-    const store = await Store.findById(req.params.storeId);
-
-    if (!store) {
-      res.status(404).json({
-        success: false,
-        error: 'Tienda no encontrada'
-      });
-      return;
-    }
-
-    // Check if user is store owner or admin
-    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
-      res.status(401).json({
-        success: false,
-        error: 'No autorizado para modificar productos en esta tienda'
       });
       return;
     }
@@ -246,25 +231,6 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const store = await Store.findById(req.params.storeId);
-
-    if (!store) {
-      res.status(404).json({
-        success: false,
-        error: 'Tienda no encontrada'
-      });
-      return;
-    }
-
-    // Check if user is store owner or admin
-    if (store.ownerId.toString() !== req.user?.id && req.user?.role !== 'admin') {
-      res.status(401).json({
-        success: false,
-        error: 'No autorizado para eliminar productos en esta tienda'
-      });
-      return;
-    }
-
     await product.deleteOne();
 
     res.status(200).json({
@@ -272,7 +238,7 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
       data: {}
     });
   } catch (error: any) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: error.message
     });
