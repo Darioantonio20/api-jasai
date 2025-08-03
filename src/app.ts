@@ -7,6 +7,8 @@ import { connectDB } from './config/database';
 import userRoutes from './routes/userRoutes';
 import authRoutes from './routes/authRoutes';
 import storeRoutes from './routes/storeRoutes';
+import cartRoutes from './routes/cartRoutes';
+import orderRoutes from './routes/orderRoutes';
 import { errorHandler } from './middlewares/errorHandler';
 
 // Load env vars
@@ -35,6 +37,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stores', storeRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Error handler
 app.use(errorHandler);
