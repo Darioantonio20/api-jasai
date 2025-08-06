@@ -8,7 +8,7 @@ export interface IProduct extends Document {
   images: string[];  // Cambiado a array para múltiples imágenes
   category: string;  // Debe coincidir con una categoría de la tienda
   storeId: string;
-  status: 'active' | 'inactive';
+  adminNote?: string;  // Nota del admin para el producto
   createdAt: Date;
   updatedAt: Date;
 }

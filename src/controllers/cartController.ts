@@ -66,11 +66,10 @@ export const addToCart = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Verificar que el producto existe y está activo
+    // Verificar que el producto existe
     const product = await Product.findOne({
       _id: productId,
-      storeId,
-      status: 'active'
+      storeId
     });
 
     if (!product) {

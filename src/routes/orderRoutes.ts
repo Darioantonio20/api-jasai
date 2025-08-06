@@ -4,7 +4,9 @@ import {
   getOrders,
   getOrder,
   updateOrderStatus,
-  getAdminStats
+  getAdminStats,
+  getClientOrders,
+  getClientOrder
 } from '../controllers/orderController';
 import { protect, authorize } from '../middlewares/auth';
 
@@ -15,6 +17,10 @@ router.post('/create', createOrder);
 
 // Protected routes
 router.use(protect);
+
+// Client routes
+router.get('/my-orders', getClientOrders);
+router.get('/my-orders/:id', getClientOrder);
 
 // Admin routes
 router.get('/admin/orders', authorize('admin'), getOrders);

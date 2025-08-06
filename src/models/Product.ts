@@ -68,10 +68,10 @@ const productSchema = new Schema({
       message: 'La tienda especificada no existe'
     }
   },
-  status: {
+  adminNote: {
     type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
+    trim: true,
+    maxlength: [200, 'La nota del admin no puede tener más de 200 caracteres']
   }
 }, {
   timestamps: true

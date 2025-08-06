@@ -257,6 +257,92 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
   }
 };
 
+// @desc    Get client orders
+// @route   GET /api/orders/my-orders
+// @access  Private (Client)
+export const getClientOrders = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    const query: any = {};
+
+    // Filtrar por estado
+    if (status) {
+      query.status = status;
+    }
+
+    // Solo órdenes del cliente actual - CORREGIDO
+    query['customer.email'] = req.user?.email;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const orders = await Order.find(query)
+      .populate('storeId', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orders,
+        pagination: {
+          page: Number(page),
+          total,
+          perPage: Number(limit)
+        }
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get single client order
+// @route   GET /api/orders/my-orders/:id
+// @access  Private (Client)
+export const getClientOrder = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('storeId', 'name')
+      .lean();
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        error: 'Orden no encontrada'
+      });
+      return;
+    }
+
+    // Verificar que el cliente puede ver esta orden - CORREGIDO
+    const isClientOrder = order.customer && order.customer.email === req.user?.email;
+
+    if (!isClientOrder) {
+      res.status(403).json({
+        success: false,
+        error: 'No autorizado para ver esta orden'
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { order }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get admin stats
 // @route   GET /api/admin/stats
 // @access  Private (Admin)
@@ -273,7 +359,7 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
 
     // Estadísticas de productos
     const totalProducts = await Product.countDocuments(storeFilter);
-    const activeProducts = await Product.countDocuments({ ...storeFilter, status: 'active' });
+    const activeProducts = totalProducts; // Todos los productos están activos ahora
 
     // Estadísticas de órdenes
     const totalOrders = await Order.countDocuments(storeFilter);

@@ -19,14 +19,6 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       query.$text = { $search: search };
     }
 
-    // Add status filter (por defecto solo productos activos)
-    const isOwnerOrAdmin = req.user && 
-      (req.user.role === 'admin' || req.user.id === req.store.ownerId.toString());
-    
-    if (!isOwnerOrAdmin) {
-      query.status = 'active';
-    }
-
     // Pagination
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -74,18 +66,6 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Si el producto está inactivo, solo el dueño o admin pueden verlo
-    const isOwnerOrAdmin = req.user && 
-      (req.user.role === 'admin' || req.user.id === req.store.ownerId.toString());
-
-    if (product.status === 'inactive' && !isOwnerOrAdmin) {
-      res.status(404).json({
-        success: false,
-        error: 'Producto no encontrado'
-      });
-      return;
-    }
-
     res.status(200).json({
       success: true,
       data: product
@@ -110,6 +90,15 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       res.status(400).json({
         success: false,
         error: 'La categoría del producto debe ser una de las categorías de la tienda'
+      });
+      return;
+    }
+
+    // Validar adminNote si se proporciona
+    if (req.body.adminNote && req.body.adminNote.length > 200) {
+      res.status(400).json({
+        success: false,
+        error: 'La nota del admin no puede tener más de 200 caracteres'
       });
       return;
     }
@@ -155,6 +144,15 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Validar adminNote si se está actualizando
+    if (req.body.adminNote && req.body.adminNote.length > 200) {
+      res.status(400).json({
+        success: false,
+        error: 'La nota del admin no puede tener más de 200 caracteres'
+      });
+      return;
+    }
+
     product = await Product.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -166,40 +164,6 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
         runValidators: true
       }
     );
-
-    res.status(200).json({
-      success: true,
-      data: product
-    });
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-};
-
-// @desc    Toggle product status (active/inactive)
-// @route   PUT /api/stores/:storeId/products/:id/toggle-status
-// @access  Private (store owner/admin)
-export const toggleProductStatus = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      storeId: req.params.storeId
-    });
-
-    if (!product) {
-      res.status(404).json({
-        success: false,
-        error: 'Producto no encontrado'
-      });
-      return;
-    }
-
-    // Toggle status
-    product.status = product.status === 'active' ? 'inactive' : 'active';
-    await product.save();
 
     res.status(200).json({
       success: true,

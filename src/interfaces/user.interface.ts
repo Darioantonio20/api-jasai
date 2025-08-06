@@ -1,8 +1,10 @@
 import { Document } from 'mongoose';
 
 interface ILocation {
+  _id?: string;       // ID de MongoDB (opcional para creación)
   alias: string;      // Descripción textual de la ubicación
   googleMapsUrl: string;  // Vínculo de Google Maps
+  isDefault?: boolean;    // Indica si es la ubicación por defecto
 }
 
 export interface IUser extends Document {
@@ -10,7 +12,8 @@ export interface IUser extends Document {
   email: string;
   password: string;
   phone: string;
-  location: ILocation;
+  locations: ILocation[];
+  currentLocationIndex: number;
   role: 'client' | 'admin';
   createdAt: Date;
   updatedAt: Date;

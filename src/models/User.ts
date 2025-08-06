@@ -43,7 +43,7 @@ const userSchema = new Schema({
       message: 'El número telefónico debe tener entre 10 y 15 dígitos'
     }
   },
-  location: {
+  locations: [{
     alias: {
       type: String,
       required: [true, 'El alias de ubicación es requerido'],
@@ -60,7 +60,15 @@ const userSchema = new Schema({
         },
         message: 'El vínculo debe ser una URL válida de Google Maps'
       }
+    },
+    isDefault: {
+      type: Boolean,
+      default: false
     }
+  }],
+  currentLocationIndex: {
+    type: Number,
+    default: 0
   },
   role: {
     type: String,
