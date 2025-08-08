@@ -132,6 +132,41 @@ const storeSchema = new Schema({
     type: String,
     enum: ['active', 'inactive'],
     default: 'active'
+  },
+  socialMedia: {
+    tiktok: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(v: string) {
+          if (!v) return true; // Campo opcional
+          return v.startsWith('https://www.tiktok.com/') || v.startsWith('https://tiktok.com/');
+        },
+        message: 'El enlace de TikTok debe ser una URL válida de TikTok'
+      }
+    },
+    facebook: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(v: string) {
+          if (!v) return true; // Campo opcional
+          return v.startsWith('https://www.facebook.com/') || v.startsWith('https://facebook.com/');
+        },
+        message: 'El enlace de Facebook debe ser una URL válida de Facebook'
+      }
+    },
+    instagram: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(v: string) {
+          if (!v) return true; // Campo opcional
+          return v.startsWith('https://www.instagram.com/') || v.startsWith('https://instagram.com/');
+        },
+        message: 'El enlace de Instagram debe ser una URL válida de Instagram'
+      }
+    }
   }
 }, {
   timestamps: true

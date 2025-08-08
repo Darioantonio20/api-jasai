@@ -12,16 +12,24 @@ interface ISchedule {
   isOpen: boolean;   // Para indicar si abre ese día
 }
 
+interface ISocialMedia {
+  tiktok?: string;
+  facebook?: string;
+  instagram?: string;
+}
+
 export interface IStore extends Document {
   name: string;
+  responsibleName: string;
+  phone: string;
   categories: string[];
-  logo: string;
   description: string;
-  image: string;
+  images: string[];
   location: ILocation;
   schedule: ISchedule[];  // Array de horarios para cada día
   ownerId: string;
   status: 'active' | 'inactive';
+  socialMedia: ISocialMedia;
   createdAt: Date;
   updatedAt: Date;
 }
