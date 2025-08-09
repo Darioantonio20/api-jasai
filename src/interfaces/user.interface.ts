@@ -12,6 +12,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   phone: string;
+  profileImageUrl?: string;
   locations: ILocation[];
   currentLocationIndex: number;
   role: 'client' | 'admin';

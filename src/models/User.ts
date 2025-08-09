@@ -43,6 +43,20 @@ const userSchema = new Schema({
       message: 'El número telefónico debe tener entre 10 y 15 dígitos'
     }
   },
+  profileImageUrl: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'La URL de la imagen no puede tener más de 500 caracteres'],
+    validate: {
+      validator: function(v: string) {
+        if (!v) return true;
+        // Acepta cualquier URL http/https; opcionalmente con extensión de imagen
+        const genericUrl = /^https?:\/\/.+/i;
+        return genericUrl.test(v);
+      },
+      message: 'La URL de imagen no es válida. Debe iniciar con http o https'
+    }
+  },
   locations: [{
     alias: {
       type: String,

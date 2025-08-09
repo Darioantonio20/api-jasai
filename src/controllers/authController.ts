@@ -12,6 +12,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email, 
       password, 
       phone,
+      profileImageUrl,
       location,
       role = 'client',
       store // Solo para role = 'admin'
@@ -99,6 +100,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email,
       password,
       phone,
+      // Solo clientes pueden establecer imagen de perfil en registro; para admin la ignoramos
+      ...(role === 'client' && profileImageUrl ? { profileImageUrl } : {}),
       locations: [{
         alias: location.alias,
         googleMapsUrl: location.googleMapsUrl,
@@ -218,7 +221,7 @@ export const logout = async (_req: Request, res: Response): Promise<void> => {
 // @access  Private
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, profileImageUrl } = req.body;
 
     // Validar campos requeridos
     if (!name || !phone) {
@@ -240,12 +243,17 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     // Buscar y actualizar usuario
+    // Construir update object permitiendo profileImageUrl solo para clientes
+    const updateData: any = { name, phone };
+    if (req.user?.role === 'client') {
+      if (typeof profileImageUrl !== 'undefined') {
+        updateData.profileImageUrl = profileImageUrl;
+      }
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user?.id,
-      {
-        name,
-        phone
-      },
+      updateData,
       {
         new: true,
         runValidators: true
