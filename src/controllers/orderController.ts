@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { Store } from '../models/Store';
+import { User } from '../models/User';
 
 // @desc    Create order
 // @route   POST /api/orders/create
@@ -129,12 +130,32 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
       .limit(Number(limit))
       .lean();
 
+    // Enriquecer con ubicación por defecto del cliente (alias y googleMapsUrl)
+    const emails = Array.from(new Set(orders.map(o => o.customer?.email).filter(Boolean)));
+    const users = await User.find({ email: { $in: emails } })
+      .select('email locations currentLocationIndex')
+      .lean();
+    const emailToLocation: Record<string, { alias: string; googleMapsUrl: string } | null> = {};
+    for (const user of users) {
+      let location = null as any;
+      if (Array.isArray(user.locations) && user.locations.length > 0) {
+        const idx = typeof user.currentLocationIndex === 'number' ? user.currentLocationIndex : 0;
+        location = user.locations[idx] || user.locations.find((l: any) => l.isDefault) || user.locations[0];
+      }
+      emailToLocation[user.email] = location ? { alias: location.alias, googleMapsUrl: location.googleMapsUrl } : null;
+    }
+
+    const enrichedOrders = orders.map((o: any) => ({
+      ...o,
+      customerDefaultLocation: emailToLocation[o.customer?.email] ?? null
+    }));
+
     const total = await Order.countDocuments(query);
 
     res.status(200).json({
       success: true,
       data: {
-        orders,
+        orders: enrichedOrders,
         pagination: {
           page: Number(page),
           total,
